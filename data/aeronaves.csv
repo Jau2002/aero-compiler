@@ -1,0 +1,3 @@
+id,matricula,tipo,horas_desde_mantenimiento,turnaround,ciclos
+A001,HK-4567,A320,180,55,1240
+A002,HK-3891,ATR72,320,45,890

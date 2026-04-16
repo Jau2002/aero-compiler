@@ -1,0 +1,30 @@
+-- restricciones.aero
+-- Archivo de prueba completo para AeroSchedule DSL v0.1
+
+RESTRICCION descanso_minimo_piloto:
+  CONTEXTO piloto
+  CUANDO vuelo.duracion > 6
+  ENTONCES descanso_siguiente >= 10
+  UNIDAD horas
+  SEVERIDAD critica
+  NORMA "EASA ORO.FTL.235"
+
+RESTRICCION horas_mensuales_piloto:
+  CONTEXTO piloto
+  SIEMPRE horas_mes <= 100
+  UNIDAD horas
+  SEVERIDAD critica
+  NORMA "EASA ORO.FTL.210"
+
+RESTRICCION turnaround_minimo:
+  CONTEXTO aeronave
+  SIEMPRE turnaround >= 45
+  UNIDAD minutos
+  SEVERIDAD operacional
+  NORMA "IATA AHM"
+
+RESTRICCION curfew_aeropuerto:
+  CONTEXTO vuelo
+  SIEMPRE hora_llegada FUERA_DE 23:00 06:00
+  SEVERIDAD regulatoria
+  NORMA "LOCAL"
