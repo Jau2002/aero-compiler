@@ -1,0 +1,49 @@
+AeroSchedule DSL v0.1
+
+G = (
+  NT = { <RuleSet>, <Rule>, <RuleBody>, <Statement>,
+         <ConditionalStmt>, <AlwaysStmt>, <Condition>,
+         <Constraint>, <Operand>, <Comparator>,
+         <Metadata>, <MetadataList> }
+
+  T = { KEYWORD_RESTRICCION, KEYWORD_CONTEXTO, KEYWORD_CUANDO,
+        KEYWORD_ENTONCES, KEYWORD_SIEMPRE, KEYWORD_UNIDAD,
+        KEYWORD_SEVERIDAD, KEYWORD_NORMA, KEYWORD_FUERA_DE,
+        IDENTIFIER, NUMBER, TIME, STRING, COMPARATOR, COLON, EOF }
+
+  S = <RuleSet>
+
+  P = {
+    <RuleSet>         ::= <Rule> <RuleSet> | EOF
+    <Rule>            ::= KEYWORD_RESTRICCION IDENTIFIER COLON <RuleBody>
+    <RuleBody>        ::= KEYWORD_CONTEXTO IDENTIFIER <Statement> <MetadataList>
+    <Statement>       ::= <ConditionalStmt> | <AlwaysStmt>
+    <ConditionalStmt> ::= KEYWORD_CUANDO <Condition> KEYWORD_ENTONCES <Constraint>
+    <AlwaysStmt>      ::= KEYWORD_SIEMPRE <Constraint>
+    <Condition>       ::= IDENTIFIER COMPARATOR <Operand>
+    <Constraint>      ::= IDENTIFIER COMPARATOR <Operand>
+                       | IDENTIFIER KEYWORD_FUERA_DE TIME TIME
+    <Operand>         ::= NUMBER | IDENTIFIER
+    <MetadataList>    ::= <Metadata> <MetadataList> | <Epsilon>
+    <Metadata>        ::= KEYWORD_UNIDAD IDENTIFIER
+                       | KEYWORD_SEVERIDAD IDENTIFIER
+                       | KEYWORD_NORMA STRING
+  }
+)
+
+Contextos válidos:
+- piloto
+- aeronave
+- vuelo
+- aeropuerto
+- tripulacion
+
+Severidades válidas:
+- critica
+- regulatoria
+- operacional
+
+Notas:
+- Los comentarios usan `--`.
+- El lexer y parser son manuales.
+- El archivo describe la gramática formal del DSL y sirve como referencia.
