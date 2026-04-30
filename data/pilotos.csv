@@ -1,3 +1,6 @@
 id,nombre,horas_mes,horas_90d,horas_12m,ultimo_vuelo_duracion,descanso_siguiente,certificaciones
 P001,RAMIREZ,87,240,950,7.5,9,A320;B737
 P002,TORRES,42,120,600,4.0,12,ATR72
+P003,GARCIA,55,150,700,5.0,11,A320
+P004,LOPEZ,92,260,980,3.0,14,B737
+P005,MARTINEZ,10,30,100,2.0,24,A320;ATR72

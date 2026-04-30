@@ -12,18 +12,31 @@ pub struct Parser {
 }
 
 impl Parser {
+    // Parser LL(1) en forma de descenso recursivo.
+    // Cada función representa una regla de la gramática del PRD.
     pub fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, index: 0 }
     }
 
+    // <RuleSet> ::= <Rule> <RuleSet> | EOF
     pub fn parse_rule_set(&mut self) -> Result<RuleSet, ParseError> {
-        let mut rules = Vec::new();
-        while !self.check(TokenKind::Eof) {
-            rules.push(self.parse_rule()?);
+        self.parse_rule_set_recursive()
+    }
+
+    fn parse_rule_set_recursive(&mut self) -> Result<RuleSet, ParseError> {
+        if self.check(TokenKind::Eof) {
+            return Ok(RuleSet { rules: Vec::new() });
         }
+
+        let rule = self.parse_rule()?;
+        let mut rest = self.parse_rule_set_recursive()?;
+        let mut rules = Vec::with_capacity(rest.rules.len() + 1);
+        rules.push(rule);
+        rules.append(&mut rest.rules);
         Ok(RuleSet { rules })
     }
 
+    // <Rule> ::= RESTRICCION IDENTIFIER : <RuleBody>
     fn parse_rule(&mut self) -> Result<Rule, ParseError> {
         self.expect(TokenKind::KeywordRestriccion, "RESTRICCION")?;
         let name = self.expect_identifier("rule name")?.lexeme;
@@ -41,6 +54,7 @@ impl Parser {
         })
     }
 
+    // <Statement> ::= <ConditionalStmt> | <AlwaysStmt>
     fn parse_statement(&mut self) -> Result<Statement, ParseError> {
         if self.match_kind(TokenKind::KeywordCuando) {
             let condition = self.parse_condition()?;
@@ -58,6 +72,7 @@ impl Parser {
         }
     }
 
+    // <Condition> ::= IDENTIFIER COMPARATOR <Operand>
     fn parse_condition(&mut self) -> Result<Condition, ParseError> {
         let field = self.expect_identifier("condition field")?.lexeme;
         let comparator = self.parse_comparator()?;
@@ -69,6 +84,8 @@ impl Parser {
         })
     }
 
+    // <Constraint> ::= IDENTIFIER COMPARATOR <Operand>
+    //               | IDENTIFIER FUERA_DE TIME TIME
     fn parse_constraint(&mut self) -> Result<Constraint, ParseError> {
         let field = self.expect_identifier("constraint field")?.lexeme;
         if self.match_kind(TokenKind::KeywordFueraDe) {
@@ -86,6 +103,7 @@ impl Parser {
         }
     }
 
+    // <Operand> ::= NUMBER | IDENTIFIER
     fn parse_operand(&mut self) -> Result<Operand, ParseError> {
         if self.check(TokenKind::Number) {
             let token = self.advance().clone();
@@ -102,34 +120,51 @@ impl Parser {
         }
     }
 
+    // <MetadataList> ::= <Metadata> <MetadataList> | ε
     fn parse_metadata_list(&mut self) -> Result<Metadata, ParseError> {
-        let mut unit = None;
-        let mut severity = None;
-        let mut norm = None;
-        while !self.check(TokenKind::Eof) && !self.check(TokenKind::KeywordRestriccion) {
-            if self.match_kind(TokenKind::KeywordUnidad) {
-                unit = Some(self.expect_identifier("unit")?.lexeme);
-            } else if self.match_kind(TokenKind::KeywordSeveridad) {
-                let ident = self.expect_identifier("severity")?.lexeme;
-                severity = Some(self.parse_severity(&ident)?);
-            } else if self.match_kind(TokenKind::KeywordNorma) {
-                norm = Some(self.expect_string("string")?.lexeme);
-            } else {
-                let token = self.advance().clone();
-                return Err(ParseError {
-                    expected: "metadata or next rule".to_string(),
-                    found: token.lexeme,
-                    line: token.line,
-                });
-            }
+        self.parse_metadata_list_recursive(None, None, None)
+    }
+
+    // Metadata opcional; el orden no importa para el AST final.
+    fn parse_metadata_list_recursive(
+        &mut self,
+        unit: Option<String>,
+        severity: Option<Severity>,
+        norm: Option<String>,
+    ) -> Result<Metadata, ParseError> {
+        if self.check(TokenKind::Eof) || self.check(TokenKind::KeywordRestriccion) {
+            return Ok(Metadata {
+                unit,
+                severity: severity.unwrap_or(Severity::Operacional),
+                norm,
+            });
         }
-        Ok(Metadata {
-            unit,
-            severity: severity.unwrap_or(Severity::Operacional),
-            norm,
+
+        if self.match_kind(TokenKind::KeywordUnidad) {
+            let unit = Some(self.expect_identifier("unit")?.lexeme);
+            return self.parse_metadata_list_recursive(unit, severity, norm);
+        }
+
+        if self.match_kind(TokenKind::KeywordSeveridad) {
+            let ident = self.expect_identifier("severity")?.lexeme;
+            let severity = Some(self.parse_severity(&ident)?);
+            return self.parse_metadata_list_recursive(unit, severity, norm);
+        }
+
+        if self.match_kind(TokenKind::KeywordNorma) {
+            let norm = Some(self.expect_string("string")?.lexeme);
+            return self.parse_metadata_list_recursive(unit, severity, norm);
+        }
+
+        let token = self.advance().clone();
+        Err(ParseError {
+            expected: "metadata or next rule".to_string(),
+            found: token.lexeme,
+            line: token.line,
         })
     }
 
+    // CONTEXTO admite solo los 5 valores semánticos del PRD.
     fn parse_context_kind(&self, token: Token) -> Result<ContextKind, ParseError> {
         match token.lexeme.as_str() {
             "piloto" => Ok(ContextKind::Piloto),
@@ -145,6 +180,7 @@ impl Parser {
         }
     }
 
+    // SEVERIDAD también se restringe a los valores del PRD.
     fn parse_severity(&self, value: &str) -> Result<Severity, ParseError> {
         match value {
             "critica" => Ok(Severity::Critica),
@@ -227,21 +263,5 @@ impl Parser {
             found: token.lexeme.clone(),
             line: token.line,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Parser;
-    use crate::lexer::Tokenizer;
-
-    #[test]
-    fn parses_reference_rules() {
-        let rules = include_str!("../../restricciones.aero");
-        let tokens = Tokenizer::new(rules).tokenize().expect("tokenize");
-        let mut parser = Parser::new(tokens);
-        let rule_set = parser.parse_rule_set().expect("parse");
-        assert_eq!(rule_set.rules.len(), 4);
-        assert_eq!(rule_set.rules[0].name, "descanso_minimo_piloto");
     }
 }

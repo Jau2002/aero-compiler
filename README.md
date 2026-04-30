@@ -18,11 +18,11 @@ cargo build
 cargo test
 ```
 
-Qué debería pasar:
+Debería pasar:
 
-- el lexer tokeniza el archivo de ejemplo
-- el parser construye el AST sin errores
-- el validator detecta las 2 violaciones esperadas del dataset de ejemplo
+- lexer sin errores
+- parser sin errores
+- validator detectando las 2 violaciones esperadas del dataset de ejemplo
 
 ## Ejecutar la aplicación
 
@@ -32,14 +32,14 @@ cargo run -- validate --rules restricciones.aero --data ./data/
 
 Salida esperada:
 
+- encabezado del validador
+- resumen de severidades
 - `Resultado: INVÁLIDO`
 - `Violaciones: 2`
 
 Eso ocurre porque `restricciones.aero` está escrito para fallar contra los CSV de ejemplo.
 
 ## Probar un caso válido
-
-Si querés ver un caso limpio, usá un archivo de reglas sin violaciones. Ejemplo:
 
 ```bash
 cargo run -- validate --rules /tmp/valid_restricciones.aero --data ./data/
@@ -70,6 +70,20 @@ Flags soportados:
 - `data/pilotos.csv`
 - `data/aeronaves.csv`
 - `data/vuelos.csv`
+
+## Qué valida y qué no valida
+
+Valida:
+
+- tokenización del DSL
+- parseo de reglas
+- evaluación contra CSV
+
+No valida aún:
+
+- generación de schedules
+- persistencia de reportes
+- imports entre archivos `.aero`
 
 ## Notas
 

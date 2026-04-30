@@ -1,16 +1,11 @@
-mod ast;
-mod lexer;
-mod parser;
-mod validator;
-
 use std::fs;
 use std::path::PathBuf;
 
 use clap::{Parser as ClapParser, ValueEnum};
 
-use crate::lexer::Tokenizer;
-use crate::parser::Parser;
-use crate::validator::{ValidationReport, Validator};
+use aero_compiler::lexer::Tokenizer;
+use aero_compiler::parser::Parser;
+use aero_compiler::validator::{ValidationReport, Validator};
 
 #[derive(Debug, ClapParser)]
 #[command(name = "aerodsl", version = "0.1.0")]
@@ -48,12 +43,12 @@ enum SeverityArg {
     Operacional,
 }
 
-impl From<SeverityArg> for crate::ast::Severity {
+impl From<SeverityArg> for aero_compiler::ast::Severity {
     fn from(value: SeverityArg) -> Self {
         match value {
-            SeverityArg::Critica => crate::ast::Severity::Critica,
-            SeverityArg::Regulatoria => crate::ast::Severity::Regulatoria,
-            SeverityArg::Operacional => crate::ast::Severity::Operacional,
+            SeverityArg::Critica => aero_compiler::ast::Severity::Critica,
+            SeverityArg::Regulatoria => aero_compiler::ast::Severity::Regulatoria,
+            SeverityArg::Operacional => aero_compiler::ast::Severity::Operacional,
         }
     }
 }
@@ -79,11 +74,11 @@ fn main() {
 }
 
 fn run_validate(
-    rules_path: &PathBuf,
-    data_path: &PathBuf,
+    rules_path: &std::path::Path,
+    data_path: &std::path::Path,
     output: OutputFormat,
     only: Option<&str>,
-    severity: Option<crate::ast::Severity>,
+    severity: Option<aero_compiler::ast::Severity>,
 ) -> i32 {
     let rules_text = match fs::read_to_string(rules_path) {
         Ok(text) => text,
@@ -116,7 +111,11 @@ fn run_validate(
     };
     let report = validator.validate(&rule_set, only, severity);
     render_report(&report, output);
-    if report.valid { 0 } else { 2 }
+    if report.valid {
+        0
+    } else {
+        2
+    }
 }
 
 fn render_report(report: &ValidationReport, output: OutputFormat) {
@@ -127,23 +126,42 @@ fn render_report(report: &ValidationReport, output: OutputFormat) {
 }
 
 fn render_text(report: &ValidationReport) {
+    println!("AeroSchedule DSL Validator v0.1");
+    println!("================================");
+    println!();
     println!(
         "Resultado: {}",
         if report.valid { "VÁLIDO" } else { "INVÁLIDO" }
     );
     println!("Violaciones: {}", report.violations.len());
+    println!(
+        "- Críticas: {}",
+        count_by_severity(report, aero_compiler::ast::Severity::Critica)
+    );
+    println!(
+        "- Regulatorias: {}",
+        count_by_severity(report, aero_compiler::ast::Severity::Regulatoria)
+    );
+    println!(
+        "- Operacionales: {}",
+        count_by_severity(report, aero_compiler::ast::Severity::Operacional)
+    );
+    println!();
     for violation in &report.violations {
         println!(
-            "[{}] {} - {} ({})",
+            "[{}] {}",
             violation.severity.as_str().to_uppercase(),
-            violation.rule_name,
-            violation.entity_name,
-            violation.entity_id
+            violation.rule_name
+        );
+        println!(
+            "  Entidad: {} ({})",
+            violation.entity_name, violation.entity_id
         );
         println!("  {}", violation.message);
         if let Some(norm) = &violation.norm {
             println!("  Norma: {norm}");
         }
+        println!();
     }
 }
 
@@ -172,4 +190,12 @@ fn render_json(report: &ValidationReport) {
 
 fn escape_json(value: &str) -> String {
     value.replace('"', "\\\"")
+}
+
+fn count_by_severity(report: &ValidationReport, severity: aero_compiler::ast::Severity) -> usize {
+    report
+        .violations
+        .iter()
+        .filter(|v| v.severity == severity)
+        .count()
 }

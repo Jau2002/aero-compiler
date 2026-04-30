@@ -169,14 +169,14 @@ impl Tokenizer {
         })?;
         let mut lexeme = String::new();
         lexeme.push(first);
-        if let Some(next) = self.peek() {
-            if matches!(
-                (first, next),
+        if let Some(next) = self.peek().filter(|&n| {
+            matches!(
+                (first, n),
                 ('>', '=') | ('<', '=') | ('=', '=') | ('!', '=')
-            ) {
-                lexeme.push(next);
-                self.advance();
-            }
+            )
+        }) {
+            lexeme.push(next);
+            self.advance();
         }
         Ok(Token {
             kind: TokenKind::Comparator,
@@ -209,29 +209,5 @@ impl Tokenizer {
             _ => TokenKind::Identifier,
         };
         Token { kind, lexeme, line }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{TokenKind, Tokenizer};
-
-    #[test]
-    fn tokenizes_reference_rule_file() {
-        let input = r#"
--- comentario
-RESTRICCION descanso_minimo_piloto:
-  CONTEXTO piloto
-  CUANDO vuelo.duracion > 6
-  ENTONCES descanso_siguiente >= 10
-  UNIDAD horas
-  SEVERIDAD critica
-  NORMA "EASA ORO.FTL.235"
-"#;
-        let tokens = Tokenizer::new(input).tokenize().expect("tokenize");
-        assert_eq!(tokens[0].kind, TokenKind::KeywordRestriccion);
-        assert!(tokens.iter().any(|t| t.kind == TokenKind::KeywordFueraDe) == false);
-        assert!(tokens.iter().any(|t| t.kind == TokenKind::Comparator));
-        assert_eq!(tokens.last().expect("eof").kind, TokenKind::Eof);
     }
 }

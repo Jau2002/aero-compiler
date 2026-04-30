@@ -1,5 +1,6 @@
 pub mod data_loader;
 pub mod report;
+#[allow(clippy::module_inception)]
 pub mod validator;
 
 pub use report::ValidationReport;

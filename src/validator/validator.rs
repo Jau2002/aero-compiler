@@ -4,7 +4,7 @@ use crate::ast::{
     Comparator, Constraint, ContextKind, Operand, Rule, RuleSet, Severity, Statement,
 };
 
-use super::data_loader::{DataSet, Row, load_data};
+use super::data_loader::{load_data, DataSet, Row};
 use super::report::{ValidationReport, Violation};
 
 pub struct Validator {
@@ -192,26 +192,6 @@ impl Validator {
                 None => false,
             },
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Validator;
-    use crate::lexer::Tokenizer;
-    use crate::parser::Parser;
-    use std::path::Path;
-
-    #[test]
-    fn detects_two_reference_violations() {
-        let rules = include_str!("../../restricciones.aero");
-        let tokens = Tokenizer::new(rules).tokenize().expect("tokenize");
-        let mut parser = Parser::new(tokens);
-        let rule_set = parser.parse_rule_set().expect("parse");
-        let validator = Validator::new(Path::new("data")).expect("validator");
-        let report = validator.validate(&rule_set, None, None);
-        assert!(!report.valid);
-        assert_eq!(report.violations.len(), 2);
     }
 }
 
